@@ -1,0 +1,156 @@
+﻿@page "/"
+
+@using System.Text.Json
+@inject IJSRuntime JS
+
+<PageTitle>Home</PageTitle>
+
+<h1>Registro de Tardanzas</h1>
+
+<button class="btn btn-primary mb-3" @onclick="MostrarFormularioCrear">Registrar Nueva Tardanza</button>
+
+@if (tardanzas.Count == 0)
+{
+    <p>No hay registros de tardanzas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Matrícula</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Curso</th>
+                <th>Motivo</th>
+                <th>Fecha y Hora</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var tardanza in tardanzas)
+            {
+                <tr>
+                    <td>@tardanza.Matricula</td>
+                    <td>@tardanza.Nombre</td>
+                    <td>@tardanza.Apellido</td>
+                    <td>@tardanza.Curso</td>
+                    <td>@tardanza.Motivo</td>
+                    <td>@tardanza.FechaHora</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => MostrarFormularioEditar(tardanza)">Editar</button>
+                        <button class="btn btn-danger" @onclick="() => EliminarTardanza(tardanza)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (mostrarFormularioCrear || mostrarFormularioEditar)
+{
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">@formularioTitulo</h5>
+            <form>
+                <div class="form-group">
+                    <label for="matricula">Matrícula</label>
+                    <input type="text" class="form-control" id="matricula" @bind="formTardanza.Matricula" />
+                </div>
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input type="text" class="form-control" id="nombre" @bind="formTardanza.Nombre" />
+                </div>
+                <div class="form-group">
+                    <label for="apellido">Apellido</label>
+                    <input type="text" class="form-control" id="apellido" @bind="formTardanza.Apellido" />
+                </div>
+                <div class="form-group">
+                    <label for="curso">Curso</label>
+                    <input type="text" class="form-control" id="curso" @bind="formTardanza.Curso" />
+                </div>
+                <div class="form-group">
+                    <label for="motivo">Motivo</label>
+                    <input type="text" class="form-control" id="motivo" @bind="formTardanza.Motivo" />
+                </div>
+                <button type="button" class="btn btn-primary" @onclick="GuardarTardanza">Guardar</button>
+                <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Tardanza> tardanzas = new List<Tardanza>();
+    private Tardanza formTardanza = new Tardanza();
+    private bool mostrarFormularioCrear = false;
+    private bool mostrarFormularioEditar = false;
+    private string formularioTitulo = "Registrar Nueva Tardanza";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDeLocalStorage();
+    }
+
+    private void MostrarFormularioCrear()
+    {
+        formTardanza = new Tardanza();
+        mostrarFormularioCrear = true;
+        formularioTitulo = "Registrar Nueva Tardanza";
+    }
+
+    private void MostrarFormularioEditar(Tardanza tardanza)
+    {
+        formTardanza = tardanza;
+        mostrarFormularioEditar = true;
+        formularioTitulo = "Editar Tardanza";
+    }
+
+    private async Task GuardarTardanza()
+    {
+        if (!tardanzas.Contains(formTardanza))
+        {
+            formTardanza.FechaHora = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+            tardanzas.Add(formTardanza);
+        }
+        mostrarFormularioCrear = false;
+        mostrarFormularioEditar = false;
+        await GuardarEnLocalStorage();
+    }
+
+    private async Task EliminarTardanza(Tardanza tardanza)
+    {
+        tardanzas.Remove(tardanza);
+        await GuardarEnLocalStorage();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormularioCrear = false;
+        mostrarFormularioEditar = false;
+    }
+
+    private async Task GuardarEnLocalStorage()
+    {
+        await JS.InvokeVoidAsync("localStorage.setItem", "tardanzas", JsonSerializer.Serialize(tardanzas));
+    }
+
+    private async Task CargarDeLocalStorage()
+    {
+        var tardanzasJson = await JS.InvokeAsync<string>("localStorage.getItem", "tardanzas");
+        if (!string.IsNullOrEmpty(tardanzasJson))
+        {
+            tardanzas = JsonSerializer.Deserialize<List<Tardanza>>(tardanzasJson);
+        }
+    }
+
+    public class Tardanza
+    {
+        public string Matricula { get; set; }
+        public string Nombre { get; set; }
+        public string Apellido { get; set; }
+        public string Curso { get; set; }
+        public string Motivo { get; set; }
+        public string FechaHora { get; set; }
+    }
+}
